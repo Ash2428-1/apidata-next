@@ -39,9 +39,14 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./package.json
 
-# Install production dependencies for Prisma
-RUN npm install --production prisma @prisma/client
-RUN npx prisma generate
+# Copy Prisma-related node_modules from builder
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/pg ./node_modules/pg
+COPY --from=builder /app/node_modules/pg-protocol ./node_modules/pg-protocol
+COPY --from=builder /app/node_modules/pg-types ./node_modules/pg-types
+COPY --from=builder /app/node_modules/pgpass ./node_modules/pgpass
 
 USER nextjs
 
