@@ -1,0 +1,8 @@
+staging.apihub.xtend.co {
+    reverse_proxy app:3000
+}
+
+# Fallback for direct IP access
+:80 {
+    reverse_proxy app:3000
+}

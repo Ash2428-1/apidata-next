@@ -1,0 +1,47 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd ~/apidata-next
+            git pull origin main
+            
+            # Create env file from secrets
+            cat > .env <<EOF
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}
+            ADMIN_PASSWORD_HASH=${{ secrets.ADMIN_PASSWORD_HASH }}
+            ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
+            DB_USER=apidata
+            DB_NAME=apidata
+            EOF
+            
+            # Build and deploy
+            docker-compose -f docker-compose.prod.yml down
+            docker-compose -f docker-compose.prod.yml build --no-cache
+            docker-compose -f docker-compose.prod.yml up -d
+            
+            # Run migrations
+            docker-compose -f docker-compose.prod.yml exec -T app npx prisma migrate deploy
+            
+            # Cleanup
+            docker system prune -f
+            
+            echo "Deployment complete!"

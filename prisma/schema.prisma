@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // hashed with bcrypt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("admins")
+}
+
+model ApiKey {
+  id        String    @id @default(cuid())
+  name      String    @unique // e.g. xtend-eco-sales
+  hashedKey String    @map("hashed_key")
+  createdAt DateTime  @default(now()) @map("created_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  requestLogs RequestLog[]
+
+  @@map("api_keys")
+}
+
+model Connector {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // e.g. cartrack, flickswitch, manual
+  credentials String   // encrypted JSON blob
+  cron        String   // cron expression
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  runs ConnectorRun[]
+
+  @@map("connectors")
+}
+
+model ConnectorRun {
+  id            String    @id @default(cuid())
+  connectorId   String    @map("connector_id")
+  startedAt     DateTime  @default(now()) @map("started_at")
+  finishedAt    DateTime? @map("finished_at")
+  status        String    // running, success, failed
+  recordsImported Int     @default(0) @map("records_imported")
+  error         String?
+
+  connector Connector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+
+  @@index([connectorId, startedAt])
+  @@map("connector_runs")
+}
+
+model Upload {
+  id        String   @id @default(cuid())
+  filename  String
+  dataType  String   @map("data_type") // contacts, deals, vehicles, sims
+  rowCount  Int      @default(0) @map("row_count")
+  uploadedAt DateTime @default(now()) @map("uploaded_at")
+  status    String   @default("pending") // pending, processing, completed, failed
+  error     String?
+
+  @@map("uploads")
+}
+
+model RequestLog {
+  id        String   @id @default(cuid())
+  timestamp DateTime @default(now())
+  apiKeyId  String?  @map("api_key_id")
+  method    String
+  path      String
+  status    Int
+  latencyMs Int      @map("latency_ms")
+
+  apiKey ApiKey? @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+
+  @@index([apiKeyId, timestamp])
+  @@index([timestamp])
+  @@map("request_logs")
+}
+
+model Contact {
+  id         String   @id @default(cuid())
+  externalId String?  @map("external_id")
+  source     String   // connector name, upload, or site key
+  data       Json     // flexible contact fields
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([source])
+  @@index([externalId])
+  @@map("contacts")
+}
+
+model Deal {
+  id         String   @id @default(cuid())
+  externalId String?  @map("external_id")
+  source     String
+  data       Json
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([source])
+  @@index([externalId])
+  @@map("deals")
+}
+
+model Vehicle {
+  id         String   @id @default(cuid())
+  externalId String?  @map("external_id")
+  source     String
+  data       Json
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([source])
+  @@index([externalId])
+  @@map("vehicles")
+}
+
+model Sim {
+  id         String   @id @default(cuid())
+  externalId String?  @map("external_id")
+  source     String
+  data       Json
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([source])
+  @@index([externalId])
+  @@map("sims")
+}

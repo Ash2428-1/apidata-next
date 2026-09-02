@@ -1,0 +1,8 @@
+# https://<domain>/api/v1/* {
+#     reverse_proxy app:3000
+# }
+
+# Local / dev fallback
+:80 {
+    reverse_proxy app:3000
+}

@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: apidata-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-apidata}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-apidata}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    networks:
+      - apidata-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-apidata}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: apidata-app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-apidata}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-apidata}?schema=public
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    networks:
+      - apidata-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: apidata-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile.prod:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - apidata-net
+    depends_on:
+      - app
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  apidata-net:
+    driver: bridge
