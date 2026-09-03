@@ -1,4 +1,12 @@
-staging.apihub.xtend.co, apihub.xtend.co {
+staging.apihub.xtend.co {
+    # Serve the Xtend Hub v4 app (hosted on Vercel) under the staging domain
+    reverse_proxy https://xtendapihub-v4.vercel.app {
+        header_up Host {upstream_hostport}
+        header_up X-Forwarded-Host {host}
+    }
+}
+
+apihub.xtend.co {
     reverse_proxy app:3000
 }
 
